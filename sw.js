@@ -1,4 +1,4 @@
-const CACHE = 'nutritrack-shell-v9';
+const CACHE = 'nutritrack-shell-v10';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './exercise-estimates.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -14,4 +14,5 @@ self.addEventListener('fetch', event => {
     return response;
   }).catch(() => caches.match('./index.html'))));
 });
+
 
