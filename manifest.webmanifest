@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "NutriTrack · Diário pessoal",
+  "short_name": "NutriTrack",
+  "description": "Diário nutricional pessoal, privado e offline.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f6f2",
+  "theme_color": "#f6f6f2",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
