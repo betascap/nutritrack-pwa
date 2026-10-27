@@ -1,4 +1,5 @@
-const CACHE = "nutritrack-shell-v18";
+const CACHE = "nutritrack-shell-v19";
+const READER_CACHE = "nutritrack-readers-v1";
 const SHELL = [
   "./",
   "./index.html",
@@ -7,6 +8,13 @@ const SHELL = [
   "./food-catalog.js",
   "./nutrition-utils.js",
   "./app.js",
+  "./capture.css",
+  "./label-parser.js",
+  "./capture.js",
+  "./capture-ui.js",
+  "./vendor/zxing-browser.min.js",
+  "./vendor/tesseract.min.js",
+  "./vendor/tesseract-worker.min.js",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-180.png",
@@ -70,17 +78,29 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
+  const assetCache = /\/vendor\/(?:core|lang)\//.test(
+    new URL(request.url).pathname,
+  )
+    ? READER_CACHE
+    : CACHE;
   event.respondWith(
-    caches.match(request).then(
-      (cached) =>
-        cached ||
-        fetch(request).then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        }),
-    ),
+    caches
+      .open(assetCache)
+      .then((cache) => cache.match(request))
+      .then(
+        (cached) =>
+          cached ||
+          fetch(request).then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              event.waitUntil(
+                caches
+                  .open(assetCache)
+                  .then((cache) => cache.put(request, copy)),
+              );
+            }
+            return response;
+          }),
+      ),
   );
 });

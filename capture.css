@@ -1,0 +1,103 @@
+.capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.capture-actions button {
+  flex: 1 1 140px;
+}
+.camera-frame {
+  position: relative;
+  background: #16241c;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 190px;
+}
+.camera-frame video {
+  display: block;
+  width: 100%;
+  max-height: 42dvh;
+  object-fit: cover;
+}
+.scan-guide {
+  position: absolute;
+  inset: 25% 8%;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  pointer-events: none;
+  box-shadow: 0 0 0 100px #0002;
+}
+.photo-stage {
+  position: relative;
+  touch-action: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  line-height: 0;
+  background: #fff;
+}
+.photo-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.crop-box {
+  position: absolute;
+  border: 3px solid #2d7b4c;
+  background: #78b78a25;
+  pointer-events: none;
+  box-shadow: 0 0 0 3000px #0004;
+}
+.label-reference {
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  display: block;
+  margin: 12px auto;
+  background: white;
+  border-radius: 8px;
+}
+.label-table-scroll {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.label-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.label-table th,
+.label-table td {
+  padding: 10px 7px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.label-table thead th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.label-table td {
+  font-variant-numeric: tabular-nums;
+}
+.chosen-column {
+  background: var(--pale);
+  font-weight: 700;
+  color: var(--green);
+}
+#labelStatus:empty,
+#reviewLabelStatus:empty {
+  display: none;
+}
+#labelWarnings {
+  margin: 8px 0;
+}
+#labelPhotoArea {
+  margin-top: 16px;
+}
+.modal-open #toast[role="status"] {
+  pointer-events: none;
+}
+.modal-open #toast .toast-action {
+  pointer-events: auto;
+}

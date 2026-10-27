@@ -6,7 +6,8 @@ O NutriTrack é um diário nutricional pessoal em formato de Progressive Web App
 
 - Registro de alimento em destaque, refeições agrupadas, seletor direto de data, totais parciais explícitos e ação de desfazer exclusões.
 - Busca local sem depender de acentos, com palavras em qualquer ordem, favoritos, categorias e carregamento de mais resultados. Alimentos sem calorias ou com rótulo pendente podem ser ocultados pelo filtro “Prontos para registrar”.
-- Consulta por marca ou código de barras digitado no Open Food Facts, com filtro opcional de Brasil, paginação, intervalo entre consultas, limite de tempo e conferência antes de salvar. Não há leitura pela câmera. A busca por marca usa filtros estruturados; não é uma busca livre por nome de produto.
+- Consulta por marca ou código no Open Food Facts, com filtro opcional de Brasil, paginação, intervalo entre consultas, limite de tempo e conferência antes de salvar. O código pode ser digitado, lido pela câmera ou reconhecido em uma foto. A busca por marca usa filtros estruturados; não é uma busca livre por nome de produto.
+- Leitura local da tabela nutricional por foto, com recorte, rotação, seleção explícita da coluna e da base (100 g, 100 ml ou outra porção). Todos os valores podem ser corrigidos antes de salvar. A imagem não é enviada ao Open Food Facts nem a um serviço de OCR, e não fica no backup ou no cadastro do alimento.
 - Campos nutricionais em branco são desconhecidos. Zero é um valor informado. Essa distinção segue do cadastro ao diário, planejamento, médias e exportações.
 - Editar a quantidade de um registro utiliza os valores salvos naquele registro. Alterar um alimento no catálogo não recalcula o histórico.
 - Perfil salva altura, peso-alvo e peso inicial. Novos alimentos exigem calorias, base positiva e fonte. Cadastros, macros e backups recebem validação adicional.
@@ -53,7 +54,7 @@ Uma hospedagem estática com HTTPS pode servir os arquivos sem banco de dados ou
 
 - A fonte nutricional do catálogo é a [TACO 4ª edição do NEPA/UNICAMP](https://nepa.unicamp.br/tabela-brasileira-de-composicao-de-alimentos-4a-edicao/). Produtos e preparações sem correspondência na tabela ficam bloqueados até receberem valores do rótulo; configure o ISO100, o tamanho da medida e os demais itens pendentes em **Ajustes → Alimentos**. Os campos marcados como traço são tratados como zero; valores indisponíveis aparecem como —, e itens sem valor calórico não podem ser registrados até você informar esse valor. Depois, ajuste os ingredientes e as quantidades do modelo de shake.
 - Os dados ficam neste navegador e não são sincronizados entre aparelhos. Atualizar o app preserva o diário e os alimentos que você personalizou; os padrões antigos do catálogo recebem os novos dados quando não foram editados. Restaurar um backup substitui o conjunto local atual após confirmação. A importação valida os registros antes de gravar e restaura as sete stores do IndexedDB numa única transação; também aceita backups JSON v2 antigos que ainda não tinham as listas de treinos, modelos ou planos. O marcador de dia completo reutiliza a store `plans`, sem remover ou renomear stores existentes.
-- Esta versão funcional foi feita com JavaScript do navegador e IndexedDB, sem dependências externas. Ela não usa React, TypeScript nem Dexie. Portanto, a implementação não atende a esse requisito técnico do pedido original, embora forneça o diário PWA funcional e local.
+- Esta versão usa JavaScript do navegador e IndexedDB. Os leitores ZXing e Tesseract são fornecidos com o app, na pasta `vendor`, e executam no aparelho. Ela não usa React, TypeScript nem Dexie.
 
 ## Fontes e manutenção
 
@@ -61,14 +62,24 @@ A TACO permanece como base local, com os 597 identificadores originais. A versã
 
 Produtos importados têm identificador `off-<código>`, campo `source`, link `sourceUrl` e código de barras. Os dados colaborativos do [Open Food Facts](https://world.openfoodfacts.org) estão sob [ODbL](https://opendatacommons.org/licenses/odbl/1-0/). A consulta usa a API v2 para filtros estruturados e nutrientes normalizados por 100 g/ml, com no máximo uma nova consulta a cada 6,5 segundos nesta sessão. Falhas do serviço não bloqueiam o diário local. A disponibilidade e a atualização de rótulos dependem do catálogo externo.
 
-O aplicativo publicado continua sem bibliotecas de execução externas. Playwright é uma dependência apenas de desenvolvimento para os testes de navegador. Os arquivos estão separados em `app.js`, `nutrition-utils.js`, `food-catalog.js` e estilos. Alterações futuras do aplicativo devem atualizar a versão do cache em `sw.js`.
+O aplicativo usa cópias locais dos leitores ZXing e Tesseract; não carrega esses motores de um CDN. Playwright e Prettier são ferramentas de desenvolvimento. Os arquivos incluem `app.js`, `nutrition-utils.js`, `food-catalog.js`, `label-parser.js`, `capture.js`, `capture-ui.js` e estilos. Alterações do aplicativo devem atualizar a versão do cache em `sw.js`. Alterar os motores ou o modelo de português exige também atualizar `READER_CACHE` e regenerar `vendor/manifest.json`.
+
+## Usar câmera e foto da tabela
+
+1. Abra **Registrar alimento → Escanear código**. Permita a câmera e enquadre todas as barras. O app verifica o código e procura primeiro no catálogo do aparelho; se necessário, consulta o Open Food Facts. Você também pode escolher uma foto do código ou digitar os números.
+2. Para a tabela, use **Registrar alimento → Fotografar tabela**. Tire uma foto ou escolha uma imagem de até 20 MB. Você pode girar a foto e arrastar para selecionar somente a tabela.
+3. Toque em **Ler tabela nutricional**. Na primeira leitura, conecte-se à internet: os motores e o modelo de português, cerca de 10 MB, são preparados no aparelho. Depois, a leitura funciona offline enquanto o navegador mantiver os arquivos locais. A foto não é enviada nem armazenada no cadastro.
+4. Confira o texto e selecione a coluna desejada, sem usar `%VD`. Confirme se os valores são por 100 g, 100 ml ou por outra porção e informe essa quantidade. Não há conversão silenciosa entre as colunas.
+5. Confira os valores e o nome do alimento na etapa seguinte antes de salvar. Se a foto falhar, você pode tentar outra, corrigir o texto reconhecido ou usar o texto copiado da tabela. Valores ausentes continuam desconhecidos.
+
+A câmera requer HTTPS ou localhost, permissão e um navegador compatível com acesso à câmera. Os testes usam imagens geradas e vídeo sintético no Chrome/Windows; o uso com uma câmera física e Safari/iPhone ainda exige conferência. Rótulos borrados, curvos ou com reflexos podem produzir erros; a revisão pelo usuário faz parte do fluxo.
 
 ## Testes
 
 Com Node.js instalado, os testes de lógica não exigem pacotes adicionais:
 
 ```sh
-node --test tests/nutrition-utils.test.cjs
+node --test tests/*.test.cjs
 ```
 
 Para os testes de navegador, instale as dependências e o Chromium:
@@ -77,6 +88,9 @@ Para os testes de navegador, instale as dependências e o Chromium:
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm test:browser
+pnpm test:capture
 ```
 
 O teste inicia e encerra seu próprio servidor local e usa um perfil isolado com dados sintéticos. As respostas externas de produtos são simuladas. É possível usar um navegador existente com `CHROME_PATH` e um pacote Playwright já instalado com `PLAYWRIGHT_MODULE`. `SCREENSHOT_DIR` salva capturas opcionais fora do repositório.
+
+`test:capture` executa os motores reais de código de barras e OCR com imagens geradas e vídeo sintético. Verifica também permissão negada, encerramento da câmera, cancelamento, porção, ausência de envio de imagens, preparação inicial e leitura offline. Para reproduzir os arquivos dos leitores, execute `pnpm vendor:readers`; as versões e hashes estão em [vendor/manifest.json](vendor/manifest.json), com licenças em `vendor/licenses`. Publique a pasta `vendor` junto aos demais arquivos do aplicativo.

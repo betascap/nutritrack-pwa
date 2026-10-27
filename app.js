@@ -1435,8 +1435,11 @@
     );
     render();
   }
-  let modalReturnFocus = null;
+  let modalReturnFocus = null,
+    captureUI;
   function showModal(html) {
+    captureUI?.cleanup();
+    onlineController?.abort();
     if (!$("#modal").classList.contains("show"))
       modalReturnFocus = document.activeElement;
     $("#sheet").innerHTML = html;
@@ -1457,6 +1460,7 @@
     });
   }
   function closeModal() {
+    captureUI?.cleanup();
     onlineController?.abort();
     $("#modal").classList.remove("show");
     document.body.classList.remove("modal-open");
@@ -1575,7 +1579,7 @@
           .join("") +
         "</select></div>" +
         '<div class="field"><label>Buscar no aparelho</label><input id="foodSearch" type="search" placeholder="Ex.: pao, frango grelhado…" autocomplete="off"></div>' +
-        '<div class="searchfilters"><button class="secondary small" id="favoritesFilter" aria-pressed="false">☆ Favoritos</button><select id="foodCategory" aria-label="Categoria de alimento"><option value="">Todas as categorias</option>' +
+        '<div class="capture-actions"><button class="secondary" id="scanFoodBarcode">Escanear código</button><button class="secondary" id="photoFoodLabel">Fotografar tabela</button></div><div class="searchfilters"><button class="secondary small" id="favoritesFilter" aria-pressed="false">☆ Favoritos</button><select id="foodCategory" aria-label="Categoria de alimento"><option value="">Todas as categorias</option>' +
         [...new Set(state.foods.map((x) => x.category).filter(Boolean))]
           .sort((a, b) => a.localeCompare(b, "pt-BR"))
           .map((c) => "<option>" + esc(c) + "</option>")
@@ -1606,6 +1610,8 @@
     $("#quickModels").onclick = showMealPicker;
     $("#newFood").onclick = () => newFoodModal();
     $("#onlineFoods").onclick = onlineFoodsModal;
+    $("#scanFoodBarcode").onclick = () => captureUI.barcodeModal();
+    $("#photoFoodLabel").onclick = () => captureUI.labelModal();
     $("#manualEntry").onclick = () => manualEntryModal($("#mealTarget").value);
     if (old) bindPicked();
     else draw();
@@ -1940,9 +1946,17 @@
             : "Novo alimento") +
         '</h2><button class="iconbtn" id="closeModal">×</button></div>' +
         (prefill
-          ? '<div class="note">Compare os dados com a embalagem. Confirme se a base é 100 g ou 100 ml. O produto ficará disponível offline depois de salvo. <a href="' +
-            esc(prefill.sourceUrl) +
-            '" target="_blank" rel="noopener noreferrer">Ver no Open Food Facts</a></div>'
+          ? '<div class="note">' +
+            (prefill.source?.startsWith("Tabela nutricional")
+              ? "Confira o texto, a coluna, a porção e todos os valores com a embalagem. A leitura por foto pode conter erros."
+              : "Compare os dados com a embalagem. Confirme a base de 100 g ou 100 ml.") +
+            " O alimento ficará disponível offline depois de salvo." +
+            (prefill.sourceUrl
+              ? '<a href="' +
+                esc(prefill.sourceUrl) +
+                '" target="_blank" rel="noopener noreferrer"> Ver no Open Food Facts</a>'
+              : "") +
+            "</div>"
           : "") +
         '<div class="field"><label>Nome</label><input id="nfName" value="' +
         esc(f.name || "") +
@@ -2221,7 +2235,12 @@
       '[data-setting="kcal"],[data-setting="p"],[data-setting="c"],[data-setting="f"]',
     )) {
       const value = Number(el.value);
-      if (!el.value.trim() || !Number.isFinite(value) || value < 0 || (el.dataset.setting === "kcal" && value === 0)) {
+      if (
+        !el.value.trim() ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        (el.dataset.setting === "kcal" && value === 0)
+      ) {
         toast("Informe metas válidas, iguais ou maiores que zero");
         return;
       }
@@ -3039,7 +3058,9 @@
         /^\d{4}-\d{2}-\d{2}$/.test(v) &&
         !Number.isNaN(Date.parse(v + "T12:00:00Z")) &&
         new Date(v + "T12:00:00Z").toISOString().slice(0, 10) === v,
-      finite = (v) => (typeof v === "number" || (typeof v === "string" && v.trim() !== "")) && Number.isFinite(Number(v)),
+      finite = (v) =>
+        (typeof v === "number" || (typeof v === "string" && v.trim() !== "")) &&
+        Number.isFinite(Number(v)),
       str = (v) => typeof v === "string";
     if (!x || x.app !== "NutriTrack" || x.version !== 2)
       throw Error("Formato ou versão de backup inválida");
@@ -3225,7 +3246,7 @@
           );
       }
     for (const [name, records] of Object.entries(arrays)) {
-      if (new Set(records.map(record => record.id)).size !== records.length)
+      if (new Set(records.map((record) => record.id)).size !== records.length)
         throw Error("Há identificadores repetidos na lista " + name);
     }
     return arrays;
@@ -3401,13 +3422,21 @@
   let onlineController = null,
     onlineLastRequest = 0;
   const onlineCache = new Map();
-  function onlineFoodsModal() {
+  function onlineFoodsModal(options = {}) {
     onlineController?.abort();
     showModal(
-      '<div class="row between"><h2>Produtos por marca ou código</h2><button class="iconbtn" id="closeModal">×</button></div><p class="muted small">Amplie seu catálogo com produtos do Open Food Facts. Depois de conferir e salvar, você pode usá-los offline.</p><div class="field"><label>Tipo de consulta</label><select id="onlineMode"><option value="brand">Marca do produto</option><option value="barcode">Código de barras digitado</option></select></div><div class="field"><label id="onlineLabel">Marca (ex.: Nestlé)</label><input id="onlineQuery" autocomplete="off" maxlength="80"></div><label class="small" id="countryFilter"><input type="checkbox" id="onlineBrazil" checked> Produtos disponíveis no Brasil</label><button class="primary" id="onlineSearch" style="width:100%;margin:14px 0">Consultar Open Food Facts</button><div class="small muted">Ao consultar, a marca ou código digitado é enviado ao Open Food Facts. Nenhum registro do seu diário é enviado. Dados colaborativos: confira o rótulo antes de salvar. <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a></div><div id="onlineResults" class="searchresults" aria-live="polite"></div><button class="secondary" id="onlineBack" style="margin-top:14px">Voltar ao registro local</button>',
+      '<div class="row between"><h2>Produtos por marca ou código</h2><button class="iconbtn" id="closeModal">×</button></div><div class="capture-actions"><button class="secondary" id="scanOnlineBarcode">Escanear código</button><button class="secondary" id="photoOnlineLabel">Fotografar tabela</button></div><p class="muted small">Amplie seu catálogo com produtos do Open Food Facts. Depois de conferir e salvar, você pode usá-los offline.</p><div class="field"><label>Tipo de consulta</label><select id="onlineMode"><option value="brand">Marca do produto</option><option value="barcode">Código de barras digitado</option></select></div><div class="field"><label id="onlineLabel">Marca (ex.: Nestlé)</label><input id="onlineQuery" autocomplete="off" maxlength="80"></div><label class="small" id="countryFilter"><input type="checkbox" id="onlineBrazil" checked> Produtos disponíveis no Brasil</label><button class="primary" id="onlineSearch" style="width:100%;margin:14px 0">Consultar Open Food Facts</button><div class="small muted">Ao consultar, a marca ou código digitado é enviado ao Open Food Facts. Nenhum registro do seu diário é enviado. Dados colaborativos: confira o rótulo antes de salvar. <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a></div><div id="onlineResults" class="searchresults" aria-live="polite"></div><button class="secondary" id="onlineBack" style="margin-top:14px">Voltar ao registro local</button>',
     );
     $("#closeModal").onclick = closeModal;
     $("#onlineBack").onclick = () => foodModal(state.selectedMeal);
+    $("#scanOnlineBarcode").onclick = () => captureUI.barcodeModal();
+    $("#photoOnlineLabel").onclick = () =>
+      captureUI.labelModal({
+        barcode:
+          $("#onlineMode").value === "barcode"
+            ? $("#onlineQuery").value
+            : undefined,
+      });
     $("#onlineMode").onchange = () => {
       const barcode = $("#onlineMode").value === "barcode";
       $("#onlineLabel").textContent = barcode
@@ -3424,6 +3453,12 @@
         $("#onlineSearch").click();
       }
     };
+    if (typeof options.barcode === "string") {
+      $("#onlineMode").value = "barcode";
+      $("#onlineMode").onchange();
+      $("#onlineQuery").value = options.barcode;
+      if (options.lookup) runOnlineSearch(1);
+    }
   }
   async function runOnlineSearch(page = 1) {
     const input = $("#onlineQuery"),
@@ -3536,11 +3571,14 @@
         )
         .join("") +
       (!products.length
-        ? '<div class="empty">Nenhum produto com dados suficientes nesta consulta. Confira a marca ou o código, ou cadastre o rótulo manualmente.</div>'
+        ? '<div class="empty">Nenhum produto com dados suficientes nesta consulta. Você pode fotografar a tabela da embalagem.</div><button class="secondary" id="photoMissingProduct">Ler tabela nutricional por foto</button>'
         : "") +
       (!barcode && raw.length === 24
         ? '<button class="secondary" id="onlineMore">Próxima página</button>'
         : "");
+    $("#photoMissingProduct")?.addEventListener("click", () =>
+      captureUI.labelModal({ barcode: barcode ? query : undefined }),
+    );
     document.querySelectorAll("[data-online-pick]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -3559,6 +3597,30 @@
       runOnlineSearch(page + 1),
     );
   }
+
+  captureUI = window.createCaptureUI({
+    showModal,
+    closeModal,
+    esc,
+    onLabel: (food) => newFoodModal(food),
+    onManual: () => onlineFoodsModal({ barcode: "" }),
+    onBarcode: (code) => {
+      const saved = state.foods.find(
+        (food) =>
+          window.NutriLabel.sameBarcode(food.barcode, code) &&
+          !food.pendingLabel &&
+          !food.unusable,
+      );
+      if (saved) {
+        foodModal(state.selectedMeal);
+        $("#picked").innerHTML = pickedForm(saved);
+        $("#results").innerHTML = "";
+        bindPicked();
+        enhanceControls($("#sheet"));
+        toast("Produto encontrado no aparelho");
+      } else onlineFoodsModal({ barcode: code, lookup: true });
+    },
+  });
 
   async function checkStoragePersistence() {
     try {
