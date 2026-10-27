@@ -1,0 +1,12 @@
+{
+  "name": "nutritrack-pwa",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "test": "node --test tests/nutrition-utils.test.cjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
