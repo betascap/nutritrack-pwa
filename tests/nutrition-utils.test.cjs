@@ -102,11 +102,11 @@ test("incomplete and implausible products cannot import", () => {
   ])
     assert.equal(offProduct(p), null);
 });
-function sample() {
+function sample(days = 14) {
   const logs = [],
     plans = [],
     weights = [];
-  for (let i = 0; i <= 14; i++) {
+  for (let i = 0; i <= days; i++) {
     const date = "2026-10-" + String(i + 1).padStart(2, "0");
     weights.push({ id: String(i), date, kg: 80 });
     if (i) {
@@ -124,17 +124,76 @@ test("adaptive estimate aligns intake and weigh-ins and excludes future records"
     2200,
   );
 });
-test("adaptive estimate stays hidden with gaps and unknown energy", () => {
+// Replaces the old "adaptive estimate stays hidden with gaps and unknown energy"
+// expectation: missing/incomplete days now reduce coverage instead of aborting.
+test("adaptive estimate tolerates one missing complete day", () => {
   const x = sample();
-  assert.equal(
-    adaptiveEstimate(x.logs, x.plans.slice(1), x.weights, "2026-10-15"),
-    null,
+  const result = adaptiveEstimate(
+    x.logs,
+    x.plans.slice(1),
+    x.weights,
+    "2026-10-15",
   );
+  assert.equal(result.kcal, 2200);
+  assert.equal(result.completeDays, result.days - 1);
+  assert.equal(result.coverage, 0.93);
+});
+test("adaptive estimate excludes an entire day with unknown energy from the mean", () => {
+  const x = sample();
+  x.logs[0].kcal = 9000;
   x.logs[0].unknownMacros = ["kcal"];
+  x.logs.push({ date: x.logs[0].date, kind: "food", kcal: 4000 });
+  const result = adaptiveEstimate(x.logs, x.plans, x.weights, "2026-10-15");
+  assert.equal(result.kcal, 2200);
+  assert.equal(result.completeDays, result.days - 1);
+  assert.equal(result.coverage, 0.93);
+});
+test("adaptive estimate stays hidden below 70 percent coverage", () => {
+  const x = sample(20);
+  // 13 eligible days out of 20 = 65%; there are still at least 10 complete days.
   assert.equal(
-    adaptiveEstimate(x.logs, x.plans, x.weights, "2026-10-15"),
+    adaptiveEstimate(x.logs, x.plans.slice(7), x.weights, "2026-10-21"),
     null,
   );
+});
+test("adaptive estimate stays hidden below ten eligible days despite 75 percent coverage", () => {
+  const x = sample(12),
+    plans = x.plans.slice(3);
+  assert.equal(plans.length, 9);
+  assert.equal(plans.length / 12, 0.75);
+  // With an interval >=14 days, >=70% coverage already implies >=10 eligible
+  // days. This 9/12 fixture meets coverage but is rejected by the minimum
+  // interval; it cannot isolate MIN_COMPLETE_DAYS under the other constraints.
+  assert.equal(adaptiveEstimate(x.logs, plans, x.weights, "2026-10-13"), null);
+});
+test("adaptive estimate accepts exactly 70 percent coverage", () => {
+  const x = sample(20);
+  const result = adaptiveEstimate(
+    x.logs,
+    x.plans.slice(6),
+    x.weights,
+    "2026-10-21",
+  );
+  assert.equal(result.kcal, 2200);
+  assert.equal(result.completeDays, 14);
+  assert.equal(result.coverage, 0.7);
+});
+test("adaptive estimate averages only eligible days in a hand-calculated interval", () => {
+  const x = sample();
+  x.logs.forEach((log) => (log.kcal = 2100));
+  x.logs[0].kcal = 99999; // This day's completion mark is removed below.
+  x.logs[1].kcal = 6000;
+  // Flat weight -> slope 0. One of 14 days is missing. The 13 eligible days
+  // supply 12*2100 + 6000 = 31200 kcal; 31200/13 - 0*7700 = 2400 kcal/day.
+  const result = adaptiveEstimate(
+    x.logs,
+    x.plans.slice(1),
+    x.weights,
+    "2026-10-15",
+  );
+  assert.equal(result.kcal, 2400);
+  assert.equal(result.days, 14);
+  assert.equal(result.completeDays, 13);
 });
 test("adaptive estimate accounts for weight slope within the same period", () => {
   const x = sample();

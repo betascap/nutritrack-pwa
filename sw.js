@@ -1,4 +1,4 @@
-const CACHE = "nutritrack-shell-v19";
+const CACHE = "nutritrack-shell-v20";
 const READER_CACHE = "nutritrack-readers-v1";
 const SHELL = [
   "./",
