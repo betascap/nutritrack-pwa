@@ -143,6 +143,8 @@
     };
   }
   function adaptiveEstimate(logs, plans, weights, endDate) {
+    const MIN_COVERAGE = 0.7;
+    const MIN_COMPLETE_DAYS = 10;
     const sorted = weights
       .filter((w) => w.date <= endDate)
       .slice()
@@ -165,7 +167,8 @@
     const completed = new Set(
       plans.filter((p) => p.dayComplete).map((p) => p.date),
     );
-    let energy = 0;
+    let energy = 0,
+      completeDays = 0;
     for (let i = 1; i <= days; i++) {
       const date = new Date(first.date + "T12:00:00Z");
       date.setUTCDate(date.getUTCDate() + i);
@@ -176,9 +179,13 @@
         !entries.length ||
         entries.some((l) => l.unknownMacros?.includes("kcal"))
       )
-        return null;
+        continue;
       energy += entries.reduce((sum, l) => sum + Number(l.kcal), 0);
+      completeDays++;
     }
+    const coverage = completeDays / days;
+    if (coverage < MIN_COVERAGE || completeDays < MIN_COMPLETE_DAYS)
+      return null;
     // Linear regression uses all weigh-ins in the same interval as food intake.
     const points = sample.map((w) => ({
       x:
@@ -192,9 +199,16 @@
     const slope =
       points.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0) /
       points.reduce((s, p) => s + (p.x - mx) ** 2, 0);
-    const kcal = Math.round(energy / days - slope * 7700);
+    const kcal = Math.round(energy / completeDays - slope * 7700);
     return Number.isFinite(kcal) && kcal > 0
-      ? { kcal, days, start: first.date, end: last.date }
+      ? {
+          kcal,
+          days,
+          start: first.date,
+          end: last.date,
+          completeDays,
+          coverage: Number(coverage.toFixed(2)),
+        }
       : null;
   }
   const api = {

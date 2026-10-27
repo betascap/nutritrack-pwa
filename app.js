@@ -1197,6 +1197,7 @@
       latest,
       weeklyChange,
       tdee,
+      adaptive,
       allCount: all.length,
       proteinKg:
         n && latest?.trend && avg("p") !== "—"
@@ -1266,7 +1267,7 @@
       )
       .join(
         "",
-      )}</div>${filtered.length ? `<svg class="chart" viewBox="0 0 340 210" preserveAspectRatio="none"><path d="M20 190H330" stroke="var(--line)"/><path d="${path}" fill="none" stroke="#b4c6b7" stroke-width="2"/><path d="${trendPath}" fill="none" stroke="var(--green)" stroke-width="3"/>${pts.map((p, i) => `<circle cx="${p.x + 20}" cy="${p.y + 10}" r="4" fill="#b4c6b7"/><text x="${p.x + 20}" y="${p.y}" text-anchor="middle" font-size="10" fill="var(--muted)">${filtered[i].kg}</text>`).join("")}<text x="20" y="205" font-size="10" fill="var(--muted)">${new Date(filtered[0].date + "T12:00:00").toLocaleDateString("pt-BR")}</text><text x="320" y="205" text-anchor="end" font-size="10" fill="var(--muted)">${new Date(filtered.at(-1).date + "T12:00:00").toLocaleDateString("pt-BR")}</text></svg>` : '<div class="empty">Registre seu peso para ver as medições reais em um gráfico.</div>'}<div class="small muted">Cinza: pesagens reais · Verde: tendência suavizada. ${wp.weeklyChange === null ? "Registre mais pesagens para calcular a mudança semanal." : `Mudança semanal da tendência: ${wp.weeklyChange > 0 ? "+" : ""}${wp.weeklyChange} kg.`}</div></div><div class="card"><h2>Progresso semanal</h2><div class="small muted">Últimos 7 dias · ${wp.n} dia(s) marcado(s) como completo(s)</div><div class="statgrid" style="margin-top:10px"><div class="stat"><span class="muted small">Calorias médias</span><strong>${wp.n ? wp.avg("kcal") : "—"} kcal</strong></div><div class="stat"><span class="muted small">Proteína média</span><strong>${wp.n ? wp.avg("p") : "—"} g</strong></div><div class="stat"><span class="muted small">Carboidratos médios</span><strong>${wp.n ? wp.avg("c") : "—"} g</strong></div><div class="stat"><span class="muted small">Gorduras médias</span><strong>${wp.n ? wp.avg("f") : "—"} g</strong></div><div class="stat"><span class="muted small">Aderência calórica</span><strong>${wp.n ? wp.adherence + "/" + wp.n : "—"}</strong><small class="muted">dentro de ±10% da meta</small></div><div class="stat"><span class="muted small">Proteína por peso</span><strong>${wp.n && wp.proteinKg ? wp.proteinKg + " g/kg" : "—"}</strong><small class="muted">com peso de tendência</small></div></div>${wp.tdee ? `<div class="note"><b>Gasto diário estimado: ${wp.tdee} kcal</b> · estimativa exploratória com alimentação e pesagens no mesmo período. Usa a premissa simplificada de 7.700 kcal/kg; hidratação e composição corporal podem alterar o resultado. Não altera suas metas.</div>` : '<div class="note">A estimativa de gasto exige pelo menos 14 dias consecutivos completos, com alimentos registrados, e 10 pesagens no mesmo período de até 28 dias.</div>'}</div><div class="sectiontitle"><h2>Pesagens</h2><span class="muted small">${w.length} registros</span></div><div class="card">${
+      )}</div>${filtered.length ? `<svg class="chart" viewBox="0 0 340 210" preserveAspectRatio="none"><path d="M20 190H330" stroke="var(--line)"/><path d="${path}" fill="none" stroke="#b4c6b7" stroke-width="2"/><path d="${trendPath}" fill="none" stroke="var(--green)" stroke-width="3"/>${pts.map((p, i) => `<circle cx="${p.x + 20}" cy="${p.y + 10}" r="4" fill="#b4c6b7"/><text x="${p.x + 20}" y="${p.y}" text-anchor="middle" font-size="10" fill="var(--muted)">${filtered[i].kg}</text>`).join("")}<text x="20" y="205" font-size="10" fill="var(--muted)">${new Date(filtered[0].date + "T12:00:00").toLocaleDateString("pt-BR")}</text><text x="320" y="205" text-anchor="end" font-size="10" fill="var(--muted)">${new Date(filtered.at(-1).date + "T12:00:00").toLocaleDateString("pt-BR")}</text></svg>` : '<div class="empty">Registre seu peso para ver as medições reais em um gráfico.</div>'}<div class="small muted">Cinza: pesagens reais · Verde: tendência suavizada. ${wp.weeklyChange === null ? "Registre mais pesagens para calcular a mudança semanal." : `Mudança semanal da tendência: ${wp.weeklyChange > 0 ? "+" : ""}${wp.weeklyChange} kg.`}</div></div><div class="card"><h2>Progresso semanal</h2><div class="small muted">Últimos 7 dias · ${wp.n} dia(s) marcado(s) como completo(s)</div><div class="statgrid" style="margin-top:10px"><div class="stat"><span class="muted small">Calorias médias</span><strong>${wp.n ? wp.avg("kcal") : "—"} kcal</strong></div><div class="stat"><span class="muted small">Proteína média</span><strong>${wp.n ? wp.avg("p") : "—"} g</strong></div><div class="stat"><span class="muted small">Carboidratos médios</span><strong>${wp.n ? wp.avg("c") : "—"} g</strong></div><div class="stat"><span class="muted small">Gorduras médias</span><strong>${wp.n ? wp.avg("f") : "—"} g</strong></div><div class="stat"><span class="muted small">Aderência calórica</span><strong>${wp.n ? wp.adherence + "/" + wp.n : "—"}</strong><small class="muted">dentro de ±10% da meta</small></div><div class="stat"><span class="muted small">Proteína por peso</span><strong>${wp.n && wp.proteinKg ? wp.proteinKg + " g/kg" : "—"}</strong><small class="muted">com peso de tendência</small></div></div>${wp.tdee ? `<div class="note"><b>Gasto diário estimado: ${wp.tdee} kcal</b> · estimativa exploratória com alimentação e pesagens no mesmo período. Usa a premissa simplificada de 7.700 kcal/kg; hidratação e composição corporal podem alterar o resultado. Não altera suas metas. Baseado em ${wp.adaptive.completeDays} de ${wp.adaptive.days} dias completos (${Math.round(wp.adaptive.coverage * 100)}%).${wp.adaptive.coverage < 1 ? " Dias não registrados ficam de fora; se forem dias de consumo maior, a estimativa tende a sair baixa." : ""}</div>` : '<div class="note">A estimativa exige 10 pesagens e pelo menos 10 dias completos, cobrindo 70% de um período de 14 a 28 dias.</div>'}</div><div class="sectiontitle"><h2>Pesagens</h2><span class="muted small">${w.length} registros</span></div><div class="card">${
       w
         .slice()
         .reverse()
@@ -2572,25 +2573,40 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
   }
   async function exportJson() {
-    state.settings.lastBackupAt = new Date().toISOString();
-    await put("settings", { id: "main", ...state.settings });
+    const exportedAt = new Date().toISOString();
     let data = {
       app: "NutriTrack",
       version: 2,
-      exportedAt: state.settings.lastBackupAt,
+      exportedAt,
       foods: state.foods,
       logs: state.logs,
       weights: state.weights,
       training: state.training,
       meals: state.meals,
       plans: state.plans,
-      settings: state.settings,
+      settings: { ...state.settings, lastBackupAt: exportedAt },
     };
-    download(
-      "nutritrack-backup-" + today() + ".json",
-      new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
-    );
-    toast("Backup JSON exportado");
+    const name = "nutritrack-backup-" + today() + ".json";
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const file = new File([blob], name, { type: "application/json" });
+    let shared = false;
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Backup NutriTrack" });
+        shared = true;
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        toast("Backup cancelado");
+        return;
+      }
+    }
+    if (!shared) download(name, blob);
+    state.settings.lastBackupAt = exportedAt;
+    await put("settings", { id: "main", ...state.settings });
+    toast(shared ? "Backup compartilhado" : "Backup JSON exportado");
   }
   function exportCsv(key) {
     let rows = state[key];
